@@ -1,4 +1,4 @@
-import "./page-layout.scss"
+import "./page-layout.scss";
 
 import React from "react";
 import { observer } from "mobx-react";
@@ -20,7 +20,7 @@ export interface PageLayoutProps extends React.DOMAttributes<any> {
 const defaultProps: Partial<PageLayoutProps> = {
   provideBackButtonNavigation: true,
   contentGaps: true,
-}
+};
 
 @observer
 export class PageLayout extends React.Component<PageLayoutProps> {
@@ -36,22 +36,23 @@ export class PageLayout extends React.Component<PageLayoutProps> {
   }
 
   async componentDidMount() {
-    window.addEventListener('keydown', this.onEscapeKey);
+    window.addEventListener("keydown", this.onEscapeKey);
   }
 
   componentWillUnmount() {
-    window.removeEventListener('keydown', this.onEscapeKey);
+    window.removeEventListener("keydown", this.onEscapeKey);
   }
 
   onEscapeKey = (evt: KeyboardEvent) => {
     if (!this.props.provideBackButtonNavigation) {
       return;
     }
+
     if (evt.code === "Escape") {
       evt.stopPropagation();
       this.back(evt);
     }
-  }
+  };
 
   render() {
     const {
@@ -59,6 +60,7 @@ export class PageLayout extends React.Component<PageLayoutProps> {
       contentGaps, showOnTop, children, ...elemProps
     } = this.props;
     const className = cssNames("PageLayout", { top: showOnTop }, this.props.className);
+
     return (
       <div {...elemProps} className={className}>
         <div className={cssNames("header flex gaps align-center", headerClass)}>
@@ -77,6 +79,6 @@ export class PageLayout extends React.Component<PageLayoutProps> {
           </div>
         </div>
       </div>
-    )
+    );
   }
 }

@@ -1,4 +1,4 @@
-import "./cluster-manager.scss"
+import "./cluster-manager.scss";
 
 import React from "react";
 import { Redirect, Route, Switch } from "react-router";
@@ -16,6 +16,7 @@ import { clusterViewRoute, clusterViewURL } from "./cluster-view.route";
 import { clusterStore } from "../../../common/cluster-store";
 import { hasLoadedView, initView, lensViews, refreshViews } from "./lens-views";
 import { globalPageRegistry } from "../../../extensions/registries/page-registry";
+import { Extensions, extensionsRoute } from "../+extensions";
 import { getMatchedClusterId } from "../../navigation";
 
 @observer
@@ -36,7 +37,7 @@ export class ClusterManager extends React.Component {
         fireImmediately: true,
         equals: comparer.shallow,
       }),
-    ])
+    ]);
   }
 
   componentWillUnmount() {
@@ -45,14 +46,16 @@ export class ClusterManager extends React.Component {
 
   get startUrl() {
     const { activeClusterId } = clusterStore;
+
     if (activeClusterId) {
       return clusterViewURL({
         params: {
           clusterId: activeClusterId
         }
-      })
+      });
     }
-    return landingURL()
+
+    return landingURL();
   }
 
   render() {
@@ -63,12 +66,13 @@ export class ClusterManager extends React.Component {
           <Switch>
             <Route component={LandingPage} {...landingRoute} />
             <Route component={Preferences} {...preferencesRoute} />
+            <Route component={Extensions} {...extensionsRoute} />
             <Route component={Workspaces} {...workspacesRoute} />
             <Route component={AddCluster} {...addClusterRoute} />
             <Route component={ClusterView} {...clusterViewRoute} />
             <Route component={ClusterSettings} {...clusterSettingsRoute} />
-            {globalPageRegistry.getItems().map(({ path, url = String(path), components: { Page } }) => {
-              return <Route key={url} path={path} component={Page}/>
+            {globalPageRegistry.getItems().map(({ url, components: { Page } }) => {
+              return <Route key={url} path={url} component={Page}/>;
             })}
             <Redirect exact to={this.startUrl}/>
           </Switch>
@@ -76,6 +80,6 @@ export class ClusterManager extends React.Component {
         <ClustersMenu/>
         <BottomBar/>
       </div>
-    )
+    );
   }
 }

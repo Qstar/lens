@@ -12,16 +12,17 @@ export class PodDisruptionBudget extends KubeObject {
     minAvailable: string;
     maxUnavailable: string;
     selector: { matchLabels: { [app: string]: string } };
-  }
+  };
   status: {
     currentHealthy: number
     desiredHealthy: number
     disruptionsAllowed: number
     expectedPods: number
-  }
+  };
 
   getSelectors() {
     const selector = this.spec.selector;
+
     return KubeObject.stringifyLabels(selector ? selector.matchLabels : null);
   }
 

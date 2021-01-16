@@ -1,16 +1,17 @@
 import { ipcRenderer } from "electron";
 import { action, computed, observable, toJS, reaction } from "mobx";
 import { BaseStore } from "./base-store";
-import { clusterStore } from "./cluster-store"
+import { clusterStore } from "./cluster-store";
 import { appEventBus } from "./event-bus";
-import { broadcastIpc } from "../common/ipc";
+import { broadcastMessage, handleRequest, requestMain } from "../common/ipc";
 import logger from "../main/logger";
+import type { ClusterId } from "./cluster-store";
 
 export type WorkspaceId = string;
 
 export interface WorkspaceStoreModel {
+  workspaces: WorkspaceModel[];
   currentWorkspace?: WorkspaceId;
-  workspaces: WorkspaceModel[]
 }
 
 export interface WorkspaceModel {
@@ -18,50 +19,104 @@ export interface WorkspaceModel {
   name: string;
   description?: string;
   ownerRef?: string;
+  lastActiveClusterId?: ClusterId;
 }
 
 export interface WorkspaceState {
   enabled: boolean;
 }
 
+/**
+ * Workspace
+ *
+ * @beta
+ */
 export class Workspace implements WorkspaceModel, WorkspaceState {
-  @observable id: WorkspaceId
-  @observable name: string
-  @observable description?: string
-  @observable ownerRef?: string
-  @observable enabled: boolean
+  /**
+   * Unique id for workspace
+   *
+   * @observable
+   */
+  @observable id: WorkspaceId;
+  /**
+   * Workspace name
+   *
+   * @observable
+   */
+  @observable name: string;
+  /**
+   * Workspace description
+   *
+   * @observable
+   */
+  @observable description?: string;
+  /**
+   * Workspace owner reference
+   *
+   * If extension sets ownerRef then it needs to explicitly mark workspace as enabled onActivate (or when workspace is saved)
+   *
+   * @observable
+   */
+  @observable ownerRef?: string;
+  /**
+   * Is workspace enabled
+   *
+   * Workspaces that don't have ownerRef will be enabled by default. Workspaces with ownerRef need to explicitly enable a workspace.
+   *
+   * @observable
+   */
+  @observable enabled: boolean;
+  /**
+   * Last active cluster id
+   *
+   * @observable
+   */
+  @observable lastActiveClusterId?: ClusterId;
 
   constructor(data: WorkspaceModel) {
-    Object.assign(this, data)
+    Object.assign(this, data);
 
     if (!ipcRenderer) {
       reaction(() => this.getState(), () => {
-        this.pushState()
-      })
+        this.pushState();
+      });
     }
   }
 
+  /**
+   * Is workspace managed by an extension
+   */
   get isManaged(): boolean {
-    return !!this.ownerRef
+    return !!this.ownerRef;
   }
 
+  /**
+   * Get workspace state
+   *
+   */
   getState(): WorkspaceState {
-    return {
+    return toJS({
       enabled: this.enabled
-    }
-  }
-
-  pushState(state = this.getState()) {
-    logger.silly("[WORKSPACE] pushing state", {...state, id: this.id})
-    broadcastIpc({
-      channel: "workspace:state",
-      args: [this.id, toJS(state)],
     });
   }
 
-  @action
-  setState(state: WorkspaceState) {
-    Object.assign(this, state)
+  /**
+   * Push state
+   *
+   * @interal
+   * @param state workspace state
+   */
+  pushState(state = this.getState()) {
+    logger.silly("[WORKSPACE] pushing state", {...state, id: this.id});
+    broadcastMessage("workspace:state", this.id, toJS(state));
+  }
+
+  /**
+   *
+   * @param state workspace state
+   */
+  @action setState(state: WorkspaceState) {
+    Object.assign(this, state);
   }
 
   toJSON(): WorkspaceModel {
@@ -69,36 +124,66 @@ export class Workspace implements WorkspaceModel, WorkspaceState {
       id: this.id,
       name: this.name,
       description: this.description,
-      ownerRef: this.ownerRef
-    })
+      ownerRef: this.ownerRef,
+      lastActiveClusterId: this.lastActiveClusterId
+    });
   }
 }
 
 export class WorkspaceStore extends BaseStore<WorkspaceStoreModel> {
-  static readonly defaultId: WorkspaceId = "default"
+  static readonly defaultId: WorkspaceId = "default";
+  private static stateRequestChannel = "workspace:states";
 
   private constructor() {
     super({
       configName: "lens-workspace-store",
     });
+  }
 
-    if (!ipcRenderer) {
-      setInterval(() => {
-        this.pushState()
-      }, 5000)
+  async load() {
+    await super.load();
+    type workspaceStateSync = {
+      id: string;
+      state: WorkspaceState;
+    };
+
+    if (ipcRenderer) {
+      logger.info("[WORKSPACE-STORE] requesting initial state sync");
+      const workspaceStates: workspaceStateSync[] = await requestMain(WorkspaceStore.stateRequestChannel);
+
+      workspaceStates.forEach((workspaceState) => {
+        const workspace = this.getById(workspaceState.id);
+
+        if (workspace) {
+          workspace.setState(workspaceState.state);
+        }
+      });
+    } else {
+      handleRequest(WorkspaceStore.stateRequestChannel, (): workspaceStateSync[] => {
+        const states: workspaceStateSync[] = [];
+
+        this.workspacesList.forEach((workspace) => {
+          states.push({
+            state: workspace.getState(),
+            id: workspace.id
+          });
+        });
+
+        return states;
+      });
     }
   }
 
   registerIpcListener() {
-    logger.info("[WORKSPACE-STORE] starting to listen state events")
+    logger.info("[WORKSPACE-STORE] starting to listen state events");
     ipcRenderer.on("workspace:state", (event, workspaceId: string, state: WorkspaceState) => {
-      this.getById(workspaceId)?.setState(state)
-    })
+      this.getById(workspaceId)?.setState(state);
+    });
   }
 
   unregisterIpcListener() {
-    super.unregisterIpcListener()
-    ipcRenderer.removeAllListeners("workspace:state")
+    super.unregisterIpcListener();
+    ipcRenderer.removeAllListeners("workspace:state");
   }
 
   @observable currentWorkspaceId = WorkspaceStore.defaultId;
@@ -124,8 +209,8 @@ export class WorkspaceStore extends BaseStore<WorkspaceStoreModel> {
 
   pushState() {
     this.workspaces.forEach((w) => {
-      w.pushState()
-    })
+      w.pushState();
+    });
   }
 
   isDefault(id: WorkspaceId) {
@@ -141,66 +226,83 @@ export class WorkspaceStore extends BaseStore<WorkspaceStoreModel> {
   }
 
   @action
-  setActive(id = WorkspaceStore.defaultId, reset = true) {
+  setActive(id = WorkspaceStore.defaultId) {
     if (id === this.currentWorkspaceId) return;
+
     if (!this.getById(id)) {
       throw new Error(`workspace ${id} doesn't exist`);
     }
     this.currentWorkspaceId = id;
-    clusterStore.activeCluster = null; // fixme: handle previously selected cluster from current workspace
   }
 
   @action
   addWorkspace(workspace: Workspace) {
     const { id, name } = workspace;
-    const existingWorkspace = this.getById(id);
+
     if (!name.trim() || this.getByName(name.trim())) {
       return;
     }
-    if (existingWorkspace) {
-      Object.assign(existingWorkspace, workspace);
-      appEventBus.emit({name: "workspace", action: "update"})
-    } else {
-      appEventBus.emit({name: "workspace", action: "add"})
-    }
     this.workspaces.set(id, workspace);
+
+    if (!workspace.isManaged) {
+      workspace.enabled = true;
+    }
+
+    appEventBus.emit({name: "workspace", action: "add"});
+
     return workspace;
   }
 
   @action
+  updateWorkspace(workspace: Workspace) {
+    this.workspaces.set(workspace.id, workspace);
+    appEventBus.emit({name: "workspace", action: "update"});
+  }
+
+  @action
   removeWorkspace(workspace: Workspace) {
-    this.removeWorkspaceById(workspace.id)
+    this.removeWorkspaceById(workspace.id);
   }
 
   @action
   removeWorkspaceById(id: WorkspaceId) {
     const workspace = this.getById(id);
+
     if (!workspace) return;
+
     if (this.isDefault(id)) {
       throw new Error("Cannot remove default workspace");
     }
+
     if (this.currentWorkspaceId === id) {
       this.currentWorkspaceId = WorkspaceStore.defaultId; // reset to default
     }
     this.workspaces.delete(id);
-    appEventBus.emit({name: "workspace", action: "remove"})
-    clusterStore.removeByWorkspaceId(id)
+    appEventBus.emit({name: "workspace", action: "remove"});
+    clusterStore.removeByWorkspaceId(id);
+  }
+
+  @action
+  setLastActiveClusterId(clusterId?: ClusterId, workspaceId = this.currentWorkspaceId) {
+    this.getById(workspaceId).lastActiveClusterId = clusterId;
   }
 
   @action
   protected fromStore({ currentWorkspace, workspaces = [] }: WorkspaceStoreModel) {
     if (currentWorkspace) {
-      this.currentWorkspaceId = currentWorkspace
+      this.currentWorkspaceId = currentWorkspace;
     }
+
     if (workspaces.length) {
       this.workspaces.clear();
       workspaces.forEach(ws => {
-        const workspace = new Workspace(ws)
+        const workspace = new Workspace(ws);
+
         if (!workspace.isManaged) {
-          workspace.enabled = true
+          workspace.enabled = true;
         }
-        this.workspaces.set(workspace.id, workspace)
-      })
+        this.workspaces.set(workspace.id, workspace);
+      });
     }
   }
 
@@ -210,8 +312,8 @@ export class WorkspaceStore extends BaseStore<WorkspaceStoreModel> {
       workspaces: this.workspacesList.map((w) => w.toJSON()),
     }, {
       recurseEverything: true
-    })
+    });
   }
 }
 
-export const workspaceStore = WorkspaceStore.getInstance<WorkspaceStore>()
+export const workspaceStore = WorkspaceStore.getInstance<WorkspaceStore>();

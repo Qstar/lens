@@ -1,11 +1,12 @@
 import React from "react";
-import { Component, K8sApi, Navigation} from "@k8slens/extensions"
+import { Component, K8sApi, Navigation} from "@k8slens/extensions";
 
 export interface NodeMenuProps extends Component.KubeObjectMenuProps<K8sApi.Node> {
 }
 
 export function NodeMenu(props: NodeMenuProps) {
   const { object: node, toolbar } = props;
+
   if (!node) return null;
   const nodeName = node.getName();
 
@@ -15,7 +16,7 @@ export function NodeMenu(props: NodeMenuProps) {
       newTab: true,
     });
     Navigation.hideDetails();
-  }
+  };
 
   const shell = () => {
     Component.createTerminalTab({
@@ -23,18 +24,19 @@ export function NodeMenu(props: NodeMenuProps) {
       node: nodeName,
     });
     Navigation.hideDetails();
-  }
+  };
 
   const cordon = () => {
     sendToTerminal(`kubectl cordon ${nodeName}`);
-  }
+  };
 
   const unCordon = () => {
-    sendToTerminal(`kubectl uncordon ${nodeName}`)
-  }
+    sendToTerminal(`kubectl uncordon ${nodeName}`);
+  };
 
   const drain = () => {
     const command = `kubectl drain ${nodeName} --delete-local-data --ignore-daemonsets --force`;
+
     Component.ConfirmDialog.open({
       ok: () => sendToTerminal(command),
       labelOk: `Drain Node`,
@@ -43,8 +45,8 @@ export function NodeMenu(props: NodeMenuProps) {
           Are you sure you want to drain <b>{nodeName}</b>?
         </p>
       ),
-    })
-  }
+    });
+  };
 
   return (
     <>

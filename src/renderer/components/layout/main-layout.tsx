@@ -3,12 +3,13 @@ import "./main-layout.scss";
 import React from "react";
 import { observable, reaction } from "mobx";
 import { disposeOnUnmount, observer } from "mobx-react";
-import { autobind, createStorage, cssNames } from "../../utils";
-import { Sidebar } from "./sidebar";
-import { ErrorBoundary } from "../error-boundary";
-import { Dock } from "../dock";
 import { getHostedCluster } from "../../../common/cluster-store";
+import { autobind, createStorage, cssNames } from "../../utils";
+import { Dock } from "../dock";
+import { ErrorBoundary } from "../error-boundary";
 import { ResizeDirection, ResizeGrowthDirection, ResizeSide, ResizingAnchor } from "../resizing-anchor";
+import { MainLayoutHeader } from "./main-layout-header";
+import { Sidebar } from "./sidebar";
 
 export interface MainLayoutProps {
   className?: any;
@@ -26,7 +27,7 @@ export class MainLayout extends React.Component<MainLayoutProps> {
 
   @observable isPinned = this.storage.get().pinnedSidebar;
   @observable isAccessible = true;
-  @observable sidebarWidth = this.storage.get().sidebarWidth
+  @observable sidebarWidth = this.storage.get().sidebarWidth;
 
   @disposeOnUnmount syncPinnedStateWithStorage = reaction(
     () => this.isPinned,
@@ -38,6 +39,7 @@ export class MainLayout extends React.Component<MainLayoutProps> {
     (sidebarWidth) => this.storage.merge({ sidebarWidth })
   );
 
+
   toggleSidebar = () => {
     this.isPinned = !this.isPinned;
     this.isAccessible = false;
@@ -47,25 +49,25 @@ export class MainLayout extends React.Component<MainLayoutProps> {
   getSidebarSize = () => {
     return {
       "--sidebar-width": `${this.sidebarWidth}px`,
-    }
-  }
+    };
+  };
 
   @autobind()
   adjustWidth(newWidth: number): void {
-    this.sidebarWidth = newWidth
+    this.sidebarWidth = newWidth;
   }
 
   render() {
     const { className, headerClass, footer, footerClass, children } = this.props;
     const cluster = getHostedCluster();
+
     if (!cluster) {
       return null; // fix: skip render when removing active (visible) cluster
     }
+
     return (
       <div className={cssNames("MainLayout", className)} style={this.getSidebarSize() as any}>
-        <header className={cssNames("flex gaps align-center", headerClass)}>
-          <span className="cluster">{cluster.preferences.clusterName || cluster.contextName}</span>
-        </header>
+        <MainLayoutHeader className={headerClass} cluster={cluster} />
 
         <aside className={cssNames("flex column", { pinned: this.isPinned, accessible: this.isAccessible })}>
           <Sidebar className="box grow" isPinned={this.isPinned} toggle={this.toggleSidebar} />

@@ -1,14 +1,12 @@
-import "./service-details.scss"
+import "./service-details.scss";
 
 import React from "react";
 import { observer } from "mobx-react";
-import { t, Trans } from "@lingui/macro";
 import { DrawerItem, DrawerTitle } from "../drawer";
 import { Badge } from "../badge";
 import { KubeEventDetails } from "../+events/kube-event-details";
 import { KubeObjectDetailsProps } from "../kube-object";
 import { Service, endpointApi } from "../../api/endpoints";
-import { _i18n } from "../../i18n";
 import { KubeObjectMeta } from "../kube-object/kube-object-meta";
 import { ServicePortComponent } from "./service-port-component";
 import { endpointStore } from "../+network-endpoints/endpoints.store";
@@ -24,43 +22,45 @@ export class ServiceDetails extends React.Component<Props> {
     if (!endpointStore.isLoaded) {
       endpointStore.loadAll();
     }
-    endpointApi.watch()
+    endpointApi.watch();
   }
 
   render() {
     const { object: service } = this.props;
+
     if (!service) return;
     const { spec } = service;
-    const endpoint = endpointStore.getByName(service.getName(), service.getNs())
+    const endpoint = endpointStore.getByName(service.getName(), service.getNs());
+
     return (
       <div className="ServicesDetails">
         <KubeObjectMeta object={service}/>
 
-        <DrawerItem name={<Trans>Selector</Trans>} labelsOnly>
+        <DrawerItem name="Selector" labelsOnly>
           {service.getSelector().map(selector => <Badge key={selector} label={selector}/>)}
         </DrawerItem>
 
-        <DrawerItem name={<Trans>Type</Trans>}>
+        <DrawerItem name="Type">
           {spec.type}
         </DrawerItem>
 
-        <DrawerItem name={<Trans>Session Affinity</Trans>}>
+        <DrawerItem name="Session Affinity">
           {spec.sessionAffinity}
         </DrawerItem>
 
-        <DrawerTitle title={_i18n._(t`Connection`)}/>
+        <DrawerTitle title={`Connection`}/>
 
-        <DrawerItem name={<Trans>Cluster IP</Trans>}>
+        <DrawerItem name="Cluster IP">
           {spec.clusterIP}
         </DrawerItem>
 
         {service.getExternalIps().length > 0 && (
-          <DrawerItem name={<Trans>External IPs</Trans>}>
+          <DrawerItem name="External IPs">
             {service.getExternalIps().map(ip => <div key={ip}>{ip}</div>)}
           </DrawerItem>
         )}
 
-        <DrawerItem name={<Trans>Ports</Trans>}>
+        <DrawerItem name="Ports">
           <div>
             {
               service.getPorts().map((port) => (
@@ -71,15 +71,13 @@ export class ServiceDetails extends React.Component<Props> {
         </DrawerItem>
 
         {spec.type === "LoadBalancer" && spec.loadBalancerIP && (
-          <DrawerItem name={<Trans>Load Balancer IP</Trans>}>
+          <DrawerItem name="Load Balancer IP">
             {spec.loadBalancerIP}
           </DrawerItem>
         )}
-        <DrawerTitle title={_i18n._(t`Endpoint`)}/>
+        <DrawerTitle title={`Endpoint`}/>
 
         <ServiceDetailsEndpoint endpoint={endpoint} />
-
-        <KubeEventDetails object={service}/>
       </div>
     );
   }
@@ -91,4 +89,13 @@ kubeObjectDetailRegistry.add({
   components: {
     Details: (props) => <ServiceDetails {...props} />
   }
-})
+});
+
+kubeObjectDetailRegistry.add({
+  kind: "Service",
+  apiVersions: ["v1"],
+  priority: 5,
+  components: {
+    Details: (props) => <KubeEventDetails {...props} />
+  }
+});

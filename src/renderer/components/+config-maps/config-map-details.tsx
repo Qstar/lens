@@ -3,7 +3,6 @@ import "./config-map-details.scss";
 import React from "react";
 import { autorun, observable } from "mobx";
 import { disposeOnUnmount, observer } from "mobx-react";
-import { Trans } from "@lingui/macro";
 import { DrawerTitle } from "../drawer";
 import { Notifications } from "../notifications";
 import { Input } from "../input";
@@ -27,39 +26,43 @@ export class ConfigMapDetails extends React.Component<Props> {
     disposeOnUnmount(this, [
       autorun(() => {
         const { object: configMap } = this.props;
+
         if (configMap) {
           this.data.replace(configMap.data); // refresh
         }
       })
-    ])
+    ]);
   }
 
   save = async () => {
     const { object: configMap } = this.props;
+
     try {
       this.isSaving = true;
       await configMapsStore.update(configMap, { ...configMap, data: this.data.toJSON() });
       Notifications.ok(
         <p>
-          <Trans>ConfigMap <b>{configMap.getName()}</b> successfully updated.</Trans>
+          <>ConfigMap <b>{configMap.getName()}</b> successfully updated.</>
         </p>
       );
     } finally {
       this.isSaving = false;
     }
-  }
+  };
 
   render() {
     const { object: configMap } = this.props;
+
     if (!configMap) return null;
     const data = Object.entries(this.data.toJSON());
+
     return (
       <div className="ConfigMapDetails">
         <KubeObjectMeta object={configMap}/>
         {
           data.length > 0 && (
             <>
-              <DrawerTitle title={<Trans>Data</Trans>}/>
+              <DrawerTitle title="Data"/>
               {
                 data.map(([name, value]) => {
                   return (
@@ -75,20 +78,18 @@ export class ConfigMapDetails extends React.Component<Props> {
                         />
                       </div>
                     </div>
-                  )
+                  );
                 })
               }
               <Button
                 primary
-                label={<Trans>Save</Trans>} waiting={this.isSaving}
+                label="Save" waiting={this.isSaving}
                 className="save-btn"
                 onClick={this.save}
               />
             </>
           )
         }
-
-        <KubeEventDetails object={configMap}/>
       </div>
     );
   }
@@ -100,4 +101,15 @@ kubeObjectDetailRegistry.add({
   components: {
     Details: (props) => <ConfigMapDetails {...props} />
   }
-})
+});
+
+kubeObjectDetailRegistry.add({
+  kind: "ConfigMap",
+  apiVersions: ["v1"],
+  priority: 5,
+  components: {
+    Details: (props) => <KubeEventDetails {...props} />
+  }
+});
+
+

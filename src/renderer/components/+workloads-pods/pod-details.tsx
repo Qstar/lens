@@ -1,11 +1,10 @@
-import "./pod-details.scss"
+import "./pod-details.scss";
 
 import React from "react";
 import kebabCase from "lodash/kebabCase";
 import { disposeOnUnmount, observer } from "mobx-react";
 import { Link } from "react-router-dom";
 import { autorun, observable, reaction, toJS } from "mobx";
-import { Trans } from "@lingui/macro";
 import { IPodMetrics, nodesApi, Pod, pvcApi, configMapApi } from "../../api/endpoints";
 import { DrawerItem, DrawerTitle } from "../drawer";
 import { Badge } from "../badge";
@@ -18,8 +17,7 @@ import { KubeEventDetails } from "../+events/kube-event-details";
 import { PodDetailsSecrets } from "./pod-details-secrets";
 import { ResourceMetrics } from "../resource-metrics";
 import { podsStore } from "./pods.store";
-import { getDetailsUrl } from "../../navigation";
-import { KubeObjectDetailsProps } from "../kube-object";
+import { getDetailsUrl, KubeObjectDetailsProps } from "../kube-object";
 import { getItemMetrics } from "../../api/endpoints/metrics.api";
 import { PodCharts, podMetricTabs } from "./pod-charts";
 import { KubeObjectMeta } from "../kube-object/kube-object-meta";
@@ -54,11 +52,13 @@ export class PodDetails extends React.Component<Props> {
   @autobind()
   async loadMetrics() {
     const { object: pod } = this.props;
+
     this.containerMetrics = await podsStore.loadContainerMetrics(pod);
   }
 
   render() {
     const { object: pod } = this.props;
+
     if (!pod) return null;
     const { status, spec } = pod;
     const { conditions, podIP } = status;
@@ -66,6 +66,7 @@ export class PodDetails extends React.Component<Props> {
     const nodeSelector = pod.getNodeSelectors();
     const volumes = pod.getVolumes();
     const metrics = podsStore.metrics;
+
     return (
       <div className="PodDetails">
         <ResourceMetrics
@@ -75,44 +76,45 @@ export class PodDetails extends React.Component<Props> {
           <PodCharts/>
         </ResourceMetrics>
         <KubeObjectMeta object={pod}/>
-        <DrawerItem name={<Trans>Status</Trans>}>
+        <DrawerItem name="Status">
           <span className={cssNames("status", kebabCase(pod.getStatusMessage()))}>{pod.getStatusMessage()}</span>
         </DrawerItem>
-        <DrawerItem name={<Trans>Node</Trans>}>
+        <DrawerItem name="Node">
           {nodeName && (
             <Link to={getDetailsUrl(nodesApi.getUrl({ name: nodeName }))}>
               {nodeName}
             </Link>
           )}
         </DrawerItem>
-        <DrawerItem name={<Trans>Pod IP</Trans>}>
+        <DrawerItem name="Pod IP">
           {podIP}
         </DrawerItem>
-        <DrawerItem name={<Trans>Priority Class</Trans>}>
+        <DrawerItem name="Priority Class">
           {pod.getPriorityClassName()}
         </DrawerItem>
-        <DrawerItem name={<Trans>QoS Class</Trans>}>
+        <DrawerItem name="QoS Class">
           {pod.getQosClass()}
         </DrawerItem>
         {conditions &&
-        <DrawerItem name={<Trans>Conditions</Trans>} className="conditions" labelsOnly>
+        <DrawerItem name="Conditions" className="conditions" labelsOnly>
           {
             conditions.map(condition => {
               const { type, status, lastTransitionTime } = condition;
+
               return (
                 <Badge
                   key={type}
                   label={type}
                   className={cssNames({ disabled: status === "False" })}
-                  tooltip={<Trans>Last transition time: {lastTransitionTime}</Trans>}
+                  tooltip={`Last transition time: ${lastTransitionTime}`}
                 />
-              )
+              );
             })
           }
         </DrawerItem>
         }
         {nodeSelector.length > 0 &&
-        <DrawerItem name={<Trans>Node Selector</Trans>}>
+        <DrawerItem name="Node Selector">
           {
             nodeSelector.map(label => (
               <Badge key={label} label={label}/>
@@ -124,24 +126,25 @@ export class PodDetails extends React.Component<Props> {
         <PodDetailsAffinities workload={pod}/>
 
         {pod.getSecrets().length > 0 && (
-          <DrawerItem name={<Trans>Secrets</Trans>}>
+          <DrawerItem name="Secrets">
             <PodDetailsSecrets pod={pod}/>
           </DrawerItem>
         )}
 
         {pod.getInitContainers() && pod.getInitContainers().length > 0 &&
-        <DrawerTitle title={<Trans>Init Containers</Trans>}/>
+        <DrawerTitle title="Init Containers"/>
         }
         {
           pod.getInitContainers() && pod.getInitContainers().map(container => {
-            return <PodDetailsContainer key={container.name} pod={pod} container={container}/>
+            return <PodDetailsContainer key={container.name} pod={pod} container={container}/>;
           })
         }
-        <DrawerTitle title={<Trans>Containers</Trans>}/>
+        <DrawerTitle title="Containers"/>
         {
           pod.getContainers().map(container => {
             const { name } = container;
             const metrics = getItemMetrics(toJS(this.containerMetrics), name);
+
             return (
               <PodDetailsContainer
                 key={name}
@@ -149,17 +152,17 @@ export class PodDetails extends React.Component<Props> {
                 container={container}
                 metrics={metrics}
               />
-            )
+            );
           })
         }
 
         {volumes.length > 0 && (
           <>
-            <DrawerTitle title={<Trans>Volumes</Trans>}/>
+            <DrawerTitle title="Volumes"/>
             {volumes.map(volume => {
               const claimName = volume.persistentVolumeClaim ? volume.persistentVolumeClaim.claimName : null;
               const configMap = volume.configMap ? volume.configMap.name : null;
-              const type = Object.keys(volume)[1]
+              const type = Object.keys(volume)[1];
 
               return (
                 <div key={volume.name} className="volume">
@@ -167,13 +170,13 @@ export class PodDetails extends React.Component<Props> {
                     <Icon small material="storage"/>
                     <span>{volume.name}</span>
                   </div>
-                  <DrawerItem name={<Trans>Type</Trans>}>
+                  <DrawerItem name="Type">
                     {type}
                   </DrawerItem>
                   { type == "configMap" && (
                     <div>
                       {configMap && (
-                        <DrawerItem name={<Trans>Name</Trans>}>
+                        <DrawerItem name="Name">
                           <Link
                             to={getDetailsUrl(configMapApi.getUrl({
                               name: configMap,
@@ -187,12 +190,12 @@ export class PodDetails extends React.Component<Props> {
                   { type === "emptyDir" && (
                     <div>
                       { volume.emptyDir.medium && (
-                        <DrawerItem name={<Trans>Medium</Trans>}>
+                        <DrawerItem name="Medium">
                           {volume.emptyDir.medium}
                         </DrawerItem>
                       )}
                       { volume.emptyDir.sizeLimit && (
-                        <DrawerItem name={<Trans>Size Limit</Trans>}>
+                        <DrawerItem name="Size Limit">
                           {volume.emptyDir.sizeLimit}
                         </DrawerItem>
                       )}
@@ -200,7 +203,7 @@ export class PodDetails extends React.Component<Props> {
                   )}
 
                   {claimName && (
-                    <DrawerItem name={<Trans>Claim Name</Trans>}>
+                    <DrawerItem name="Claim Name">
                       <Link
                         to={getDetailsUrl(pvcApi.getUrl({
                           name: claimName,
@@ -211,13 +214,12 @@ export class PodDetails extends React.Component<Props> {
                     </DrawerItem>
                   )}
                 </div>
-              )
+              );
             })}
           </>
         )}
-        <KubeEventDetails object={pod}/>
       </div>
-    )
+    );
   }
 }
 
@@ -225,6 +227,15 @@ kubeObjectDetailRegistry.add({
   kind: "Pod",
   apiVersions: ["v1"],
   components: {
-    Details: (props: any) => <PodDetails {...props} />
+    Details: (props: KubeObjectDetailsProps<Pod>) => <PodDetails {...props} />
   }
-})
+});
+
+kubeObjectDetailRegistry.add({
+  kind: "Pod",
+  apiVersions: ["v1"],
+  priority: 5,
+  components: {
+    Details: (props: KubeObjectDetailsProps<Pod>) => <KubeEventDetails {...props} />
+  }
+});

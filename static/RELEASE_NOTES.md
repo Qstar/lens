@@ -2,20 +2,74 @@
 
 Here you can find description of changes we've built into each release. While we try our best to make each upgrade automatic and as smooth as possible, there may be some cases where you might need to do something to ensure the application works smoothly. So please read through the release highlights!
 
-## 4.0.0-alpha.4 (current version)
+## 4.0.2 (current version)
+
+We are aware some users are encountering issues and regressions from previous version. Many of these issues are something we have not seen as part of our automated or manual testing process. To make it worse, some of them are really difficult to reproduce. We want to ensure we are putting all our energy and effort trying to resolve these issues. We hope you are patient. Expect to see new patch releases still in the coming days! Fixes in this version:
+
+- Fix: use correct apiversion for HPA details
+- Fix: use correct apiversion fro CronJob details
+- Fix: wrong values in node metrics
+- Fix: Deployment scale button "minus"
+- Fix: remove symlink on extension install and manual runtime uninstall
+- Fix: logs autoscroll behaviour
+- Performance fixes
+
+## 4.0.1
+
+- Extension install/uninstall fixes
+- Fix status brick styles in pod-menu-extension
+- MacOS: fix error on app start
+- Performance fix: query all objects using single api call if admin and namespace list is not overridden
+- Extension API fix: register a cluster page component properly to a route
+
+## 4.0.0
 
 - Extension API
 - Improved pod logs
+- Mechanism for users to specify accessible namespaces
 - Tray icon
+- Support networking.k8s.io/v1 for Ingress
 - Add last-status information for container
 - Add LoadBalancer information to Ingress view
+- Add search by ip to Pod view
+- Add Ready status column in the Deployment view
+- Add +/- buttons in scale deployment popup screen
+- Add stateful set scale slider
 - Move tracker to an extension
-- Add support page (as an extension)
+- Ability to restart deployment
 - Status bar visual fixes
+- Update chart details when selecting another chart
+- Use latest alpine version (3.12) for shell sessions
+- Open last active cluster after switching workspaces
+- Replace deprecated stable helm repository with bitnami
+- Catch errors return error response when fetching chart or chart values fails
+- Update EULA url
+- Change add-cluster to single column layout
+- Replace cluster warning event polling with watches
+- Detect more Kubernetes distributions
+- Performance fix when cluster has lots of namespaces
+- Store more than largest kube api request amount in the event store
+- Fix pod usage metrics on Kubernetes >=1.19
 - Fix proxy upgrade socket timeouts
 - Fix UI staleness after network issues
-- Add +/- buttons in scale deployment popup screen
-- Update chart details when selecting another chart
+- Fix errors on app quit
+- Fix kube-auth-proxy to accept only target cluster hostname
+- Fix link to metrics stack resources
+
+## 3.6.9
+- Use Alpine 3.12 for node shell sessions
+- Fix errors on app quit
+- Fix kube-auth-proxy to accept only target cluster hostname
+
+## 3.6.8
+- Fix cluster connection issue when opening cluster settings for disconnected clusters
+- Fetch available Helm repositories from Artifact HUB
+- Check if user is cluster admin before opening cluster dashboard
+- Fix issue when application is disconnecting too fast from pod shell
+- Fix UI staleness after network issues
+
+## 3.6.7
+- Fix cluster dashboard opening when cluster is initially offline
 
 ## 3.6.6
 - Fix labels' word boundary to cover only drawer badges

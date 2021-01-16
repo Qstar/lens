@@ -1,14 +1,15 @@
 import type { ClusterId } from "../common/cluster-store";
-import { clusterStore } from "../common/cluster-store";
 import { observable } from "mobx";
-import { app, BrowserWindow, dialog, ipcMain, shell, webContents } from "electron"
-import windowStateKeeper from "electron-window-state"
-import { extensionLoader } from "../extensions/extension-loader";
-import { appEventBus } from "../common/event-bus"
+import { app, BrowserWindow, dialog, shell, webContents } from "electron";
+import windowStateKeeper from "electron-window-state";
+import { appEventBus } from "../common/event-bus";
+import { subscribeToBroadcast } from "../common/ipc";
 import { initMenu } from "./menu";
 import { initTray } from "./tray";
+import { Singleton } from "../common/utils";
+import { ClusterFrameInfo, clusterFrameMap } from "../common/cluster-frames";
 
-export class WindowManager {
+export class WindowManager extends Singleton {
   protected mainWindow: BrowserWindow;
   protected splashWindow: BrowserWindow;
   protected windowState: windowStateKeeper.State;
@@ -17,6 +18,7 @@ export class WindowManager {
   @observable activeClusterId: ClusterId;
 
   constructor(protected proxyPort: number) {
+    super();
     this.bindEvents();
     this.initMenu();
     this.initTray();
@@ -24,7 +26,7 @@ export class WindowManager {
   }
 
   get mainUrl() {
-    return `http://localhost:${this.proxyPort}`
+    return `http://localhost:${this.proxyPort}`;
   }
 
   async initMainWindow(showSplash = true) {
@@ -35,11 +37,13 @@ export class WindowManager {
         defaultWidth: 1440,
       });
     }
+
     if (!this.mainWindow) {
       // show icon in dock (mac-os only)
       app.dock?.show();
 
       const { width, height, x, y } = this.windowState;
+
       this.mainWindow = new BrowserWindow({
         x, y, width, height,
         show: false,
@@ -61,14 +65,14 @@ export class WindowManager {
         shell.openExternal(url);
       });
       this.mainWindow.webContents.on("dom-ready", () => {
-        extensionLoader.broadcastExtensions()
-      })
+        appEventBus.emit({name: "app", action: "dom-ready"});
+      });
       this.mainWindow.on("focus", () => {
-        appEventBus.emit({name: "app", action: "focus"})
-      })
+        appEventBus.emit({name: "app", action: "focus"});
+      });
       this.mainWindow.on("blur", () => {
-        appEventBus.emit({name: "app", action: "blur"})
-      })
+        appEventBus.emit({name: "app", action: "blur"});
+      });
 
       // clean up
       this.mainWindow.on("closed", () => {
@@ -76,15 +80,19 @@ export class WindowManager {
         this.mainWindow = null;
         this.splashWindow = null;
         app.dock?.hide(); // hide icon in dock (mac-os)
-      })
+      });
     }
+
     try {
       if (showSplash) await this.showSplash();
       await this.mainWindow.loadURL(this.mainUrl);
       this.mainWindow.show();
       this.splashWindow?.close();
+      setTimeout(() => {
+        appEventBus.emit({ name: "app", action: "start" });
+      }, 1000);
     } catch (err) {
-      dialog.showErrorBox("ERROR!", err.toString())
+      dialog.showErrorBox("ERROR!", err.toString());
     }
   }
 
@@ -98,7 +106,7 @@ export class WindowManager {
 
   protected bindEvents() {
     // track visible cluster from ui
-    ipcMain.on("cluster-view:current-id", (event, clusterId: ClusterId) => {
+    subscribeToBroadcast("cluster-view:current-id", (event, clusterId: ClusterId) => {
       this.activeClusterId = clusterId;
     });
   }
@@ -106,12 +114,13 @@ export class WindowManager {
   async ensureMainWindow(): Promise<BrowserWindow> {
     if (!this.mainWindow) await this.initMainWindow();
     this.mainWindow.show();
+
     return this.mainWindow;
   }
 
-  sendToView({ channel, frameId, data = [] }: { channel: string, frameId?: number, data?: any[] }) {
-    if (frameId) {
-      this.mainWindow.webContents.sendToFrame(frameId, channel, ...data);
+  sendToView({ channel, frameInfo, data = [] }: { channel: string, frameInfo?: ClusterFrameInfo, data?: any[] }) {
+    if (frameInfo) {
+      this.mainWindow.webContents.sendToFrame([frameInfo.processId, frameInfo.frameId], channel, ...data);
     } else {
       this.mainWindow.webContents.send(channel, ...data);
     }
@@ -119,17 +128,23 @@ export class WindowManager {
 
   async navigate(url: string, frameId?: number) {
     await this.ensureMainWindow();
+    let frameInfo: ClusterFrameInfo;
+
+    if (frameId) {
+      frameInfo = Array.from(clusterFrameMap.values()).find((frameInfo) => frameInfo.frameId === frameId);
+    }
     this.sendToView({
-      channel: "menu:navigate",
-      frameId: frameId,
+      channel: "renderer:navigate",
+      frameInfo,
       data: [url],
-    })
+    });
   }
 
   reload() {
-    const frameId = clusterStore.getById(this.activeClusterId)?.frameId;
-    if (frameId) {
-      this.sendToView({ channel: "menu:reload", frameId });
+    const frameInfo = clusterFrameMap.get(this.activeClusterId);
+
+    if (frameInfo) {
+      this.sendToView({ channel: "renderer:reload", frameInfo });
     } else {
       webContents.getFocusedWebContents()?.reload();
     }
@@ -154,6 +169,11 @@ export class WindowManager {
     this.splashWindow.show();
   }
 
+  hide() {
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) this.mainWindow.hide();
+    if (this.splashWindow && !this.splashWindow.isDestroyed()) this.splashWindow.hide();
+  }
+
   destroy() {
     this.mainWindow.destroy();
     this.splashWindow.destroy();
@@ -161,7 +181,7 @@ export class WindowManager {
     this.splashWindow = null;
     Object.entries(this.disposers).forEach(([name, dispose]) => {
       dispose();
-      delete this.disposers[name]
+      delete this.disposers[name];
     });
   }
 }

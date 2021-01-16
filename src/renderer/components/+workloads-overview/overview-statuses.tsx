@@ -1,8 +1,7 @@
-import "./overview-statuses.scss"
+import "./overview-statuses.scss";
 
 import React from "react";
 import { observer } from "mobx-react";
-import { Trans } from "@lingui/macro";
 import { OverviewWorkloadStatus } from "./overview-workload-status";
 import { Link } from "react-router-dom";
 import { workloadURL, workloadStores } from "../+workloads";
@@ -12,23 +11,24 @@ import { NamespaceSelectFilter } from "../+namespaces/namespace-select";
 import { isAllowedResource, KubeResource } from "../../../common/rbac";
 import { ResourceNames } from "../../../renderer/utils/rbac";
 import { autobind } from "../../utils";
-import { _i18n } from "../../i18n";
 
 const resources: KubeResource[] = [
   "pods",
   "deployments",
   "statefulsets",
   "daemonsets",
+  "replicasets",
   "jobs",
   "cronjobs",
-]
+];
 
 @observer
 export class OverviewStatuses extends React.Component {
   @autobind()
   renderWorkload(resource: KubeResource): React.ReactElement {
     const store = workloadStores[resource];
-    const items = store.getAllByNs(namespaceStore.contextNs)
+    const items = store.getAllByNs(namespaceStore.contextNs);
+
     return (
       <div className="workload" key={resource}>
         <div className="title">
@@ -36,7 +36,7 @@ export class OverviewStatuses extends React.Component {
         </div>
         <OverviewWorkloadStatus status={store.getStatuses(items)} />
       </div>
-    )
+    );
   }
 
   render() {
@@ -47,7 +47,7 @@ export class OverviewStatuses extends React.Component {
     return (
       <div className="OverviewStatuses">
         <div className="header flex gaps align-center">
-          <h5 className="box grow"><Trans>Overview</Trans></h5>
+          <h5 className="box grow">Overview</h5>
           <NamespaceSelectFilter />
         </div>
         <PageFiltersList />
@@ -55,6 +55,6 @@ export class OverviewStatuses extends React.Component {
           {workloads}
         </div>
       </div>
-    )
+    );
   }
 }

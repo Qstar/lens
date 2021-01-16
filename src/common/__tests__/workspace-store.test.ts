@@ -1,53 +1,59 @@
-import mockFs from "mock-fs"
+import mockFs from "mock-fs";
 
 jest.mock("electron", () => {
   return {
     app: {
-      getVersion: () => '99.99.99',
-      getPath: () => 'tmp',
-      getLocale: () => 'en'
+      getVersion: () => "99.99.99",
+      getPath: () => "tmp",
+      getLocale: () => "en"
+    },
+    ipcMain: {
+      handle: jest.fn(),
+      on: jest.fn()
     }
-  }
-})
+  };
+});
 
-import { Workspace, WorkspaceStore } from "../workspace-store"
+import { Workspace, WorkspaceStore } from "../workspace-store";
 
 describe("workspace store tests", () => {
   describe("for an empty config", () => {
     beforeEach(async () => {
-      WorkspaceStore.resetInstance()
-      mockFs({ tmp: { 'lens-workspace-store.json': "{}" } })
+      WorkspaceStore.resetInstance();
+      mockFs({ tmp: { "lens-workspace-store.json": "{}" } });
 
       await WorkspaceStore.getInstance<WorkspaceStore>().load();
-    })
+    });
 
     afterEach(() => {
-      mockFs.restore()
-    })
+      mockFs.restore();
+    });
 
     it("default workspace should always exist", () => {
       const ws = WorkspaceStore.getInstance<WorkspaceStore>();
 
       expect(ws.workspaces.size).toBe(1);
       expect(ws.getById(WorkspaceStore.defaultId)).not.toBe(null);
-    })
+    });
 
     it("cannot remove the default workspace", () => {
       const ws = WorkspaceStore.getInstance<WorkspaceStore>();
 
       expect(() => ws.removeWorkspaceById(WorkspaceStore.defaultId)).toThrowError("Cannot remove");
-    })
+    });
 
-    it("can update default workspace name", () => {
+    it("can update workspace description", () => {
       const ws = WorkspaceStore.getInstance<WorkspaceStore>();
-
-      ws.addWorkspace(new Workspace({
-        id: WorkspaceStore.defaultId,
+      const workspace = ws.addWorkspace(new Workspace({
+        id: "foobar",
         name: "foobar",
       }));
 
-      expect(ws.currentWorkspace.name).toBe("foobar");
-    })
+      workspace.description = "Foobar description";
+      ws.updateWorkspace(workspace);
+
+      expect(ws.getById("foobar").description).toBe("Foobar description");
+    });
 
     it("can add workspaces", () => {
       const ws = WorkspaceStore.getInstance<WorkspaceStore>();
@@ -57,14 +63,17 @@ describe("workspace store tests", () => {
         name: "foobar",
       }));
 
-      expect(ws.getById("123").name).toBe("foobar");
-    })
+      const workspace = ws.getById("123");
+
+      expect(workspace.name).toBe("foobar");
+      expect(workspace.enabled).toBe(true);
+    });
 
     it("cannot set a non-existent workspace to be active", () => {
       const ws = WorkspaceStore.getInstance<WorkspaceStore>();
 
       expect(() => ws.setActive("abc")).toThrow("doesn't exist");
-    })
+    });
 
     it("can set a existent workspace to be active", () => {
       const ws = WorkspaceStore.getInstance<WorkspaceStore>();
@@ -75,7 +84,7 @@ describe("workspace store tests", () => {
       }));
 
       expect(() => ws.setActive("abc")).not.toThrowError();
-    })
+    });
 
     it("can remove a workspace", () => {
       const ws = WorkspaceStore.getInstance<WorkspaceStore>();
@@ -91,7 +100,7 @@ describe("workspace store tests", () => {
       ws.removeWorkspaceById("123");
 
       expect(ws.workspaces.size).toBe(2);
-    })
+    });
 
     it("cannot create workspace with existent name", () => {
       const ws = WorkspaceStore.getInstance<WorkspaceStore>();
@@ -102,7 +111,7 @@ describe("workspace store tests", () => {
       }));
 
       expect(ws.workspacesList.length).toBe(1);  // default workspace only
-    })
+    });
 
     it("cannot create workspace with empty name", () => {
       const ws = WorkspaceStore.getInstance<WorkspaceStore>();
@@ -113,7 +122,7 @@ describe("workspace store tests", () => {
       }));
 
       expect(ws.workspacesList.length).toBe(1);  // default workspace only
-    })
+    });
 
     it("cannot create workspace with ' ' name", () => {
       const ws = WorkspaceStore.getInstance<WorkspaceStore>();
@@ -124,7 +133,7 @@ describe("workspace store tests", () => {
       }));
 
       expect(ws.workspacesList.length).toBe(1);  // default workspace only
-    })
+    });
 
     it("trim workspace name", () => {
       const ws = WorkspaceStore.getInstance<WorkspaceStore>();
@@ -135,15 +144,15 @@ describe("workspace store tests", () => {
       }));
 
       expect(ws.workspacesList.length).toBe(1);  // default workspace only
-    })
-  })
+    });
+  });
 
   describe("for a non-empty config", () => {
     beforeEach(async () => {
-      WorkspaceStore.resetInstance()
+      WorkspaceStore.resetInstance();
       mockFs({
         tmp: {
-          'lens-workspace-store.json': JSON.stringify({
+          "lens-workspace-store.json": JSON.stringify({
             currentWorkspace: "abc",
             workspaces: [{
               id: "abc",
@@ -154,19 +163,19 @@ describe("workspace store tests", () => {
             }]
           })
         }
-      })
+      });
 
       await WorkspaceStore.getInstance<WorkspaceStore>().load();
-    })
+    });
 
     afterEach(() => {
-      mockFs.restore()
-    })
+      mockFs.restore();
+    });
 
     it("doesn't revert to default workspace", async () => {
       const ws = WorkspaceStore.getInstance<WorkspaceStore>();
 
       expect(ws.currentWorkspaceId).toBe("abc");
-    })
-  })
-})
+    });
+  });
+});
