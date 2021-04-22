@@ -346,7 +346,7 @@
     "webpack": "^4.44.2",
     "webpack-cli": "^3.3.11",
     "webpack-dev-server": "^3.11.0",
-    "webpack-node-externals": "^1.7.2",
+    "webpack-node-externals": "^3.0.0",
     "what-input": "^5.2.10",
     "xterm": "^4.6.0",
     "xterm-addon-fit": "^0.4.0"
